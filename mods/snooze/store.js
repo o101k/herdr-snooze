@@ -110,6 +110,13 @@ export function clock(at) {
 // an agent's snooze hides only its row in the Agents list.
 const AGENTS = "snooze.agents";
 
+// The last 50 snoozes and wakes with their reason, newest last: shared("snooze.log").
+export function log(what, target, why) {
+  const prev = shared("snooze.log");
+  const list = Array.isArray(prev) ? prev.slice(-49) : [];
+  setShared("snooze.log", [...list, { at: new Date().toISOString(), what, target, why }]);
+}
+
 export function agentEntries() {
   const v = shared(AGENTS);
   return v && typeof v === "object" && !Array.isArray(v) ? v : {};
@@ -118,9 +125,11 @@ export function agentEntries() {
 export function snoozeAgent(address, name, space, ms) {
   const now = Date.now();
   setShared(AGENTS, { ...agentEntries(), [address]: { until: now + ms, at: now, name, space: space ?? "" } });
+  log("snooze", address, `${Math.round(ms / 60000)}m`);
 }
 
-export function wakeAgent(address) {
+export function wakeAgent(address, why = "woken") {
+  log("wake", address, why);
   const next = { ...agentEntries() };
   delete next[address];
   setShared(AGENTS, next);
@@ -138,9 +147,9 @@ export function sweepAgents(now = Date.now()) {
   let changed = false;
   for (const [address, e] of Object.entries(all)) {
     const local = !address.includes("/");
-    if (local && live.length && !known.has(address)) { changed = true; continue; }
-    if (status.get(address) === "blocked") { changed = true; continue; }
-    if (e.until <= now) { due.push({ address, ...e }); changed = true; continue; }
+    if (local && live.length && !known.has(address)) { log("wake", address, "terminal ended"); changed = true; continue; }
+    if (status.get(address) === "blocked") { log("wake", address, "blocked"); changed = true; continue; }
+    if (e.until <= now) { log("wake", address, "due"); due.push({ address, ...e }); changed = true; continue; }
     next[address] = e;
   }
   if (changed) setShared(AGENTS, next);

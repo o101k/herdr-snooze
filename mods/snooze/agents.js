@@ -311,7 +311,7 @@ export default class AgentsSidebar {
     const needsYou = (addr) => this.listed.get(addr) === "blocked"
       || this.tree(all, addr).some((k) => kidStatus(k.t, this.listed) === "blocked");
     const blocked = Object.keys(snoozedNow).filter(needsYou);
-    if (blocked.length) cx.timer.after(0, () => { if (!checking()) blocked.forEach(wakeAgent); });
+    if (blocked.length) cx.timer.after(0, () => { if (!checking()) blocked.forEach((addr) => wakeAgent(addr, this.listed.get(addr) === "blocked" ? "blocked" : "sub-agent blocked")); });
     this.snoozedSet = new Set(Object.keys(snoozedNow).filter((addr) => !blocked.includes(addr)));
     const unfiltered = list;
     list = list.filter((a) => !this.snoozedSet.has(a.address));
