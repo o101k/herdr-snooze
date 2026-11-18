@@ -543,7 +543,9 @@ export default class Sidebar {
     return h_flex().id(`snooze-${w.id}`).size(20).flex_none().items_center().justify_center().rounded(5)
       .text_color(t.dim).hover((s) => s.bg(t.raised).text_color(t.foreground))
       .tooltip(kids ? `Snooze with its ${kids} worktree${kids === 1 ? "" : "s"}` : "Snooze")
-      .on_mouse_down("left", stop).on_mouse_up("left", stop)
+      .on_mouse_down("left", stop)
+      // A release that ends a drag (pressed on this same row) must still reach the row.
+      .on_mouse_up("left", (_e, cx) => { if (this.pressed === null) cx.stop_propagation(); })
       .on_click((_e, cx) => { cx.stop_propagation(); this.openPicker(w); })
       .child(svg("mods/snooze/clock.svg").size(13));
   }
