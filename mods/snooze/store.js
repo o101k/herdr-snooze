@@ -3,7 +3,7 @@
 //   { [spaceId]: { until, at, name, machine, with: [worktree space ids hidden along with it] } }
 // `until` and `at` are epoch milliseconds.
 
-import { shared, setShared, spaces, machines } from "herdr";
+import { shared, setShared, spaces, machines, agents, terminals } from "herdr";
 
 const KEY = "snooze.spaces";
 
@@ -104,4 +104,45 @@ export function clock(at) {
   const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   if (d.toDateString() === now.toDateString()) return hm;
   return `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()]} ${hm}`;
+}
+
+// Agents: shared("snooze.agents") = { [address]: { until, at, name } }. Kept apart from spaces:
+// an agent's snooze hides only its row in the Agents list.
+const AGENTS = "snooze.agents";
+
+export function agentEntries() {
+  const v = shared(AGENTS);
+  return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+}
+
+export function snoozeAgent(address, name, ms) {
+  const now = Date.now();
+  setShared(AGENTS, { ...agentEntries(), [address]: { until: now + ms, at: now, name } });
+}
+
+export function wakeAgent(address) {
+  const next = { ...agentEntries() };
+  delete next[address];
+  setShared(AGENTS, next);
+}
+
+// Ends due snoozes and those of agents that need you now (blocked: Herdr tells you itself),
+// and forgets this computer's agents whose terminal ended. Returns the due ones.
+export function sweepAgents(now = Date.now()) {
+  const all = agentEntries();
+  const status = new Map(agents().map((a) => [a.address, a.status]));
+  const live = terminals().filter((t) => t.state === "live").map((t) => t.address);
+  const known = new Set(live);
+  const next = {};
+  const due = [];
+  let changed = false;
+  for (const [address, e] of Object.entries(all)) {
+    const local = !address.includes("/");
+    if (local && live.length && !known.has(address)) { changed = true; continue; }
+    if (status.get(address) === "blocked") { changed = true; continue; }
+    if (e.until <= now) { due.push({ address, ...e }); changed = true; continue; }
+    next[address] = e;
+  }
+  if (changed) setShared(AGENTS, next);
+  return due;
 }

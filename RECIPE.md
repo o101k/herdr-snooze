@@ -4,7 +4,8 @@ Herdr's Spaces sidebar with a snooze button. Hover a space and click its clock t
 for 15 minutes, an hour or any time you type. The space leaves the list, along with its worktrees
 when it is a repo's main space, and waits in a **Snoozed** section at the bottom that counts down
 the time left. When the time is up, the space comes back and a toast takes you to it. Click a
-snoozed space to wake it early.
+snoozed space to wake it early. Agents work the same way: a clock on each agent in the Agents
+list, and a Snoozed section below it.
 
 ![Snooze](preview.png)
 
@@ -26,6 +27,11 @@ snoozed space to wake it early.
   (an alarm clock icon). In the narrow rail (sidebar under 160px), it is one clock icon with
   the count, and a tooltip lists each space with its time left.
 
+- **Agents**: the Agents list as Herdr ships it. A hovered row shows the clock button just
+  before its pin button. A **Snoozed (N)** section under the agents works like the spaces one,
+  with a clock icon, name, time left and wake button. Clicking a row wakes the agent and
+  focuses its pane.
+
 ## How it behaves
 
 - Clicking the clock opens the picker for that space. It doesn't select or drag the row.
@@ -43,6 +49,9 @@ snoozed space to wake it early.
 - Clicking a snoozed row wakes the space and opens it. The wake button only wakes it.
 - A space closed while snoozed is forgotten, once its machine's layout is readable.
 - Snoozes persist across restarts, in shared state.
+- A snoozed agent leaves the Agents list and the order `agent.next`/`agent.prev` follow. It
+  comes back when its time is up (with a toast that focuses it), when it is woken, or as soon
+  as it reports `blocked`. A snoozed agent whose terminal ended on this computer is forgotten.
 - `mod.open {name: "snooze"}` (bind it in keys.json) opens the picker for the shown space.
   Worktrees aren't included that way.
 - Agent status isn't shown on snoozed spaces, the same as on listed ones. The Agents list still
@@ -50,9 +59,15 @@ snoozed space to wake it early.
 
 ## Built from
 
-- One mod folder, `mods/snooze/`, with two roles. `main.js` default-exports a `View` that
-  delegates to `Picker` when `props().overlay` is set, otherwise to `Sidebar`. Both are plain
+- One mod folder, `mods/snooze/`, with three roles. `main.js` default-exports a `View` that
+  delegates to `Picker` when `props().overlay` is set, to `AgentsSidebar` when
+  `props().role === "agents"`, and otherwise to `Sidebar`. The picker takes
+  `{agent, name}` instead of `{space, with}` for an agent. Both are plain
   classes with `init`/`render`.
+- `agents.js` is a copy of the shipped `mods/agents/main.js`, also marked `snooze:`. It filters
+  out `shared("snooze.agents")` = `{ [address]: { until, at, name } }` before `setAgentOrder`.
+  Use it in the layout with `props.role: "agents"`. Its sort popup still opens the shipped
+  `agents` mod.
 - `sidebar.js` is a copy of Herdr's shipped `mods/spaces/main.js`. Every change is marked
   `snooze:`.
   - `ordered()` filters the snoozed spaces out only at its final `return`. Its `space.move`
@@ -89,6 +104,9 @@ snoozed space to wake it early.
   a toast can appear twice.
 
 ## Done when
+
+- Hovering an agent shows the clock before the pin. Snoozing it moves it to the agents'
+  Snoozed section, and the row wakes it and focuses it.
 
 - `herdr-app check ~/.config/herdr-app/mods/snooze` passes.
 - Hovering a space shows the clock, and clicking it opens the picker without switching spaces.

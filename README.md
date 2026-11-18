@@ -5,6 +5,10 @@ clock and pick a duration. The space, with its worktrees when it is a repo's mai
 the list until the time is up. A **Snoozed** section at the bottom of the sidebar shows each
 snoozed space with its time left. Click one to wake it early.
 
+Agents work the same way. Hover an agent in the Agents list and click its clock. A snoozed
+agent leaves the list and `agent.next`/`agent.prev`, and waits in its own Snoozed section
+below the agents. A snoozed agent that becomes blocked (needs you) wakes at once.
+
 ![Snooze](preview.png)
 
 ## Install
@@ -32,6 +36,12 @@ snoozed space with its time left. Click one to wake it early.
    { "mod": "snooze", "props": { "durations": ["15m", "30m", "1h", "2h", "4h"] } }
    ```
 
+   For agents, change the agents block's content from `{ "mod": "agents" }` to:
+
+   ```json
+   { "mod": "snooze", "props": { "role": "agents", "durations": ["15m", "30m", "1h", "2h", "4h"] } }
+   ```
+
 3. Run `herdr-app check ~/.config/herdr-app/mods/snooze`, then confirm that `herdr-app status`
    shows no errors.
 
@@ -50,8 +60,10 @@ snoozed space with its time left. Click one to wake it early.
 
 - Snoozing hides a space only in this sidebar. `space.next`/`space.prev`, `space.select` by
   index and the Agents list still reach it.
-- The sidebar is a copy of Herdr's shipped `spaces` mod, because a mod can't import another mod.
-  It won't pick up Herdr's later changes to that sidebar.
+- The two lists are copies of Herdr's shipped `spaces` and `agents` mods, because a mod can't
+  import another mod. They won't pick up Herdr's later changes to those lists.
+- The Agents copy keeps its own "time since last change" stamps, so they restart once when you
+  switch to it.
 - Like the shipped sidebar, it runs `git` in your spaces' folders and `hc machine` commands.
 
 See [RECIPE.md](RECIPE.md) for the full brief.
