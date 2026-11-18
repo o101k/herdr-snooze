@@ -29,7 +29,10 @@ list, and a Snoozed section below it.
 
 - **Agents**: the Agents list as Herdr ships it. A hovered row shows the clock button just
   before its pin button. A **Snoozed (N)** section under the agents works like the spaces one,
-  with a clock icon, name, time left and wake button. Clicking a row wakes the agent and
+  but grouped under small `dim` space-name headers (11px, medium weight). Groups are ordered
+  by their soonest snooze. Each row has a clock icon, the agent's own label (its named tab or
+  title, never the space name), time left and a wake button. The picker shows the space name
+  at the right of its title. Clicking a row wakes the agent and
   focuses its pane.
 
 ## How it behaves
@@ -65,7 +68,7 @@ list, and a Snoozed section below it.
   `{agent, name}` instead of `{space, with}` for an agent. Both are plain
   classes with `init`/`render`.
 - `agents.js` is a copy of the shipped `mods/agents/main.js`, also marked `snooze:`. It filters
-  out `shared("snooze.agents")` = `{ [address]: { until, at, name } }` before `setAgentOrder`.
+  out `shared("snooze.agents")` = `{ [address]: { until, at, name, space } }` before `setAgentOrder`.
   Use it in the layout with `props.role: "agents"`. Its sort popup still opens the shipped
   `agents` mod.
 - `sidebar.js` is a copy of Herdr's shipped `mods/spaces/main.js`. Every change is marked

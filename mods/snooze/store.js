@@ -106,7 +106,7 @@ export function clock(at) {
   return `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()]} ${hm}`;
 }
 
-// Agents: shared("snooze.agents") = { [address]: { until, at, name } }. Kept apart from spaces:
+// Agents: shared("snooze.agents") = { [address]: { until, at, name, space } }. Kept apart from spaces:
 // an agent's snooze hides only its row in the Agents list.
 const AGENTS = "snooze.agents";
 
@@ -115,9 +115,9 @@ export function agentEntries() {
   return v && typeof v === "object" && !Array.isArray(v) ? v : {};
 }
 
-export function snoozeAgent(address, name, ms) {
+export function snoozeAgent(address, name, space, ms) {
   const now = Date.now();
-  setShared(AGENTS, { ...agentEntries(), [address]: { until: now + ms, at: now, name } });
+  setShared(AGENTS, { ...agentEntries(), [address]: { until: now + ms, at: now, name, space: space ?? "" } });
 }
 
 export function wakeAgent(address) {

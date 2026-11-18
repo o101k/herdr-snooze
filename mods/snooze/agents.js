@@ -188,20 +188,28 @@ export default class AgentsSidebar {
       .on_click((_e, cx) => {
         cx.stop_propagation();
         openOverlay({ mod: "snooze", kind: "popup", width: 260, height: 300,
-          props: { agent: a.address, name, durations: props()?.durations } });
+          props: { agent: a.address, name, spaceName: a.space_name, durations: props()?.durations } });
         this.hovered = null;
         cx.notify();
       })
       .child(svg("mods/snooze/clock.svg").size(13));
   }
 
-  // snooze: the Snoozed section under the list, soonest first.
+  // snooze: the Snoozed section under the list, grouped by space (the live one, else the one it
+  // was snoozed in), soonest first within a group and between groups.
   snoozed(t, collapsed, now) {
-    const list = Object.entries(agentEntries()).map(([address, e]) => ({ address, ...e })).sort((a, b) => a.until - b.until);
+    const spaceOf = new Map(agents().map((a) => [a.address, a.space_name]));
+    const list = Object.entries(agentEntries()).map(([address, e]) => ({ address, ...e, space: spaceOf.get(address) ?? e.space ?? "" }))
+      .sort((a, b) => a.until - b.until);
+    const groups = [];
+    for (const e of list) {
+      const g = groups.find((g) => g.space === e.space);
+      g ? g.members.push(e) : groups.push({ space: e.space, members: [e] });
+    }
     if (collapsed) {
       return h_flex().id("snoozed-agents-rail").h(26).gap(2).flex_none().justify_center().items_center()
         .text_size(11).text_color(t.dim)
-        .tooltip(list.map((e) => `${e.name}: ${left(e.until - now)}`).join("\n"))
+        .tooltip(list.map((e) => `${e.space ? `${e.space} · ` : ""}${e.name}: ${left(e.until - now)}`).join("\n"))
         .child(svg("mods/snooze/clock.svg").size(12)).child(String(list.length));
     }
     const fold = (_e, cx) => {
@@ -225,7 +233,12 @@ export default class AgentsSidebar {
         .on_click(fold)
         .child(svg(`mods/workspace-chrome/chevron-${this.snoozedFolded ? "right" : "down"}.svg`).size(11).flex_none())
         .child(div().flex_1().child(`Snoozed (${list.length})`)))
-      .when(!this.snoozedFolded, (el) => el.child(v_flex().id("snoozed-agents-list").max_h(180).overflow_y_scrollbar().children(list.map(row))));
+      .when(!this.snoozedFolded, (el) => el.child(v_flex().id("snoozed-agents-list").max_h(200).overflow_y_scrollbar()
+        .children(groups.flatMap((g, i) => [
+          div().id(`snoozed-space-${i}`).px(8).pt(i ? 6 : 0).h(i ? 24 : 18).flex_none().text_size(11).font_medium().text_color(t.dim).truncate()
+            .child(g.space || "No space"),
+          ...g.members.map(row),
+        ]))));
   }
 
   peek(addr) {
@@ -444,7 +457,7 @@ export default class AgentsSidebar {
           .when(full && Boolean(more), el => el.child(div().flex_1().min_w(0).truncate().text_color(t.dim).child(`\u00b7 ${more}`))))
         .when(Boolean(machine), el => el.child(div().text_size(10).text_color(t.dim).child(machine)))
         .when(subs.length > 0, el => el.child(fold(a, subs)))
-        .when(this.hovered === a.address, el => el.child(this.snoozeButton(t, a, name)).child(pin))
+        .when(this.hovered === a.address, el => el.child(this.snoozeButton(t, a, more ?? (/^\d+$/.test(label(a)) ? a.program?.name || label(a) : label(a)))).child(pin))
         .when(this.hovered !== a.address && Boolean(when), el => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when))))
         .child(this.status(t, a, byPriority && !isPinned));
     };

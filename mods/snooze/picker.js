@@ -1,5 +1,5 @@
 // The snooze picker: a popup listing how long to snooze one space for.
-// props: { overlay, space?, with?, durations? } for a space, or { overlay, agent, name, durations? }
+// props: { overlay, space?, with?, durations? } for a space, or { overlay, agent, name, spaceName, durations? }
 // for an agent (its terminal address). Without `space` (opened by a key through
 // mod.open) it snoozes the shown space. ↑/↓ move, Enter snoozes (the typed duration when
 // there is one), Esc closes.
@@ -45,7 +45,7 @@ export default class Picker {
     const ms = parseDuration(text);
     closeOverlay(p.overlay);
     if (ms === null) return;
-    if (p.agent) return snoozeAgent(p.agent, p.name || p.agent, ms);
+    if (p.agent) return snoozeAgent(p.agent, p.name || p.agent, p.spaceName, ms);
     if (!space) return;
     const kids = (Array.isArray(p.with) ? p.with : []).filter((id) => id !== space.id);
     // Leave a space that's about to disappear for the nearest one still listed.
@@ -84,6 +84,7 @@ export default class Picker {
       .child(h_flex().px(8).pt(4).pb(6).gap(7).items_center()
         .child(svg("mods/snooze/clock.svg").size(13).flex_none().text_color(t.muted))
         .child(div().flex_1().min_w(0).truncate().font_semibold().child(p.agent ? `Snooze ${p.name || p.agent}` : space ? `Snooze ${space.name}` : "No space to snooze"))
+        .when(Boolean(p.agent && p.spaceName), (el) => el.child(div().flex_none().max_w(90).truncate().text_size(11).text_color(t.dim).child(p.spaceName)))
         .when(kids > 0, (el) => el.child(div().flex_none().text_size(11).text_color(t.dim).child(`+${kids} worktree${kids === 1 ? "" : "s"}`))))
       .children(list.map((d, i) => h_flex().id(`snooze-${i}`).h(28).px(8).gap(8).items_center().rounded(6).cursor_pointer()
         .when(i === this.at, (el) => el.bg(t.selected))
