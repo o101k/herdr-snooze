@@ -20,7 +20,9 @@ below the agents. A snoozed agent that becomes blocked (needs you) wakes at once
    cp -R herdr-snooze/mods/snooze ~/.config/herdr-app/mods/snooze
    ```
 
-   To work on the mod, symlink the folder instead of copying it. Herdr reloads on every save.
+   Or run `./scripts/install.sh` from the clone, which copies the folder and runs
+   `herdr-app check`. Don't symlink the folder to work on it: Herdr doesn't see edits made
+   behind a symlink. Rerun the script after each change instead.
 
 2. Point a layout of your own at it. Herdr's shipped layouts are read-only, so clone one first
    if you only use those:
