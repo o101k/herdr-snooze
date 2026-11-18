@@ -107,8 +107,8 @@ export default class Sidebar {
 
   // snooze: wake what came due (a toast goes to it) and forget closed spaces.
   sweep() {
+    if (checking()) return;
     for (const e of sweep()) {
-      if (checking()) continue;
       notify({ title: `${e.name} is back`, body: "Snooze over.", level: "info", icon: "mods/snooze/clock.svg", action: { name: "space.select", args: { id: e.id } } });
     }
   }
@@ -327,6 +327,8 @@ export default class Sidebar {
     const ready = (w) => this.shown.has(w.id) || where(w, ps) in this.git || Date.now() - (this.born[w.id] ??= Date.now()) > 1500;
     for (const w of sp) if (!this.shown.has(w.id) && ready(w)) this.shown.add(w.id);
     const list = sp.map((w, i) => ({ w, i, g: this.git[where(w, ps)] ?? null }));
+    const hidden = hiddenIds(); // snooze
+    this.kidsOf = {}; // snooze: rebuilt each time, so a space that stops being a repo's main loses its list
     const mains = new Set(list.filter((r) => r.g && !r.g.linked).map((r) => r.g.repo));
     const nested = (r) => r.g?.linked && mains.has(r.g.repo);
     const out = [];
@@ -337,8 +339,10 @@ export default class Sidebar {
       if (!r.g || r.g.linked || placed.has(r.g.repo)) continue;
       placed.add(r.g.repo);
       const kids = list.filter((k) => nested(k) && k.g.repo === r.g.repo);
-      this.kidsOf[r.w.id] = kids.map((k) => k.w.id); // snooze: a parent's snooze takes these along
-      kids.forEach((k, n) => out.push({ ...k, tree: n === kids.length - 1 ? "└─" : "├─" }));
+      // snooze: a parent's snooze takes its listed worktrees along; the last one listed gets └─.
+      const listed = kids.filter((k) => !hidden.has(k.w.id));
+      this.kidsOf[r.w.id] = listed.map((k) => k.w.id);
+      kids.forEach((k) => out.push({ ...k, tree: k === listed[listed.length - 1] ? "└─" : "├─" }));
     }
     // Simulate the batch so later indexes include earlier moves. An attempted
     // write can lose a sync conflict: allow the echo to settle before retrying.
@@ -360,7 +364,6 @@ export default class Sidebar {
       this.ordering.machines = [...moved];
     }
     // snooze: hidden only here, after the reorder above has seen every space.
-    const hidden = hiddenIds();
     return out.filter(r => this.shown.has(r.w.id) && !hidden.has(r.w.id));
   }
 
@@ -528,7 +531,7 @@ export default class Sidebar {
           .when(!tree, el => el.child(h_flex().size(18).flex_none().rounded(5).bg(fill).items_center().justify_center().text_size(10.5).font_bold().text_color("#ffffff").child([...w.name][0]?.toUpperCase() ?? "?")))
           .child(div().flex_initial().min_w(SIDE_MIN).truncate().text_color(t.foreground).child(w.name))
           .child(g ? this.gitTail(g, tree, w.name, t) : div().flex_1())
-          .when(this.hoverRow === w.id, (el) => el.child(this.snoozeButton(w, t))),
+          .when(this.hoverRow === w.id && this.pressed === null, (el) => el.child(this.snoozeButton(w, t))),
       );
   }
 

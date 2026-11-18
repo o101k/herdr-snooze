@@ -10,6 +10,7 @@ const KEY = "snooze.spaces";
 export const DEFAULT_DURATIONS = ["15m", "30m", "1h", "2h", "4h"];
 
 const UNIT = { m: 60e3, h: 3600e3, d: 86400e3, w: 604800e3 };
+const LONGEST = 52 * UNIT.w;
 
 export function entries() {
   const v = shared(KEY);
@@ -46,14 +47,15 @@ export function wake(id) {
 export function sweep(now = Date.now()) {
   const all = entries();
   const live = new Set(spaces().map((s) => s.id));
-  const ready = (m) => m === null || machines().some((k) => k.name === m && k.layout === "ready");
+  // This computer is listed too (name null), and can still be loading at start.
+  const ready = (m) => machines().some((k) => (k.name ?? null) === m && k.layout === "ready");
   const next = {};
   const due = [];
   let changed = false;
   for (const [id, e] of Object.entries(all)) {
     const machine = e.machine ?? null;
-    if (e.until <= now) { due.push({ id, ...e }); changed = true; continue; }
     if (ready(machine) && !live.has(id)) { changed = true; continue; }
+    if (e.until <= now) { due.push({ id, ...e }); changed = true; continue; }
     const kids = ready(machine) ? (e.with ?? []).filter((k) => live.has(k)) : (e.with ?? []);
     if (kids.length !== (e.with ?? []).length) changed = true;
     next[id] = { ...e, with: kids };
@@ -66,11 +68,13 @@ export function sweep(now = Date.now()) {
 export function parseDuration(text) {
   const s = String(text ?? "").trim().toLowerCase().replace(/\s+/g, "");
   if (!s) return null;
-  if (/^\d+(\.\d+)?$/.test(s)) return Number(s) * UNIT.m; // a bare number is minutes
-  const re = /(\d+(?:\.\d+)?)(m|min|mins|h|hr|hrs|d|w)/y;
-  let total = 0, m;
-  while (re.lastIndex < s.length && (m = re.exec(s))) total += Number(m[1]) * UNIT[m[2][0]];
-  return re.lastIndex === s.length && total > 0 ? total : null;
+  const ok = (ms) => (ms > 0 && ms <= LONGEST ? ms : null);
+  if (/^\d+(\.\d+)?$/.test(s)) return ok(Number(s) * UNIT.m); // a bare number is minutes
+  // Longer spellings first: alternatives are tried in order.
+  const re = /(\d+(?:\.\d+)?)(mins|min|m|hrs|hr|h|d|w)/y;
+  let total = 0, at = 0, m;
+  while (at < s.length && (m = re.exec(s))) { total += Number(m[1]) * UNIT[m[2][0]]; at = re.lastIndex; }
+  return at === s.length ? ok(total) : null;
 }
 
 // "15m" -> "15 minutes", "1h30m" -> "1h 30m".
