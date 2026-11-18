@@ -291,13 +291,17 @@ export default class AgentsSidebar {
     this.listed = new Map(list.map((a) => [a.address, a.status]));
     // snooze: snoozed agents leave the list, and with it agent.next/prev's order. One that
     // needs you shows at once; the sweep, just after this render, ends its snooze.
+    // A sub-agent of a snoozed parent that needs you wakes the parent (its row shows the tree).
+    const all = terminals();
     const snoozedNow = agentEntries();
-    const blocked = Object.keys(snoozedNow).filter((addr) => this.listed.get(addr) === "blocked");
-    if (blocked.length) cx.timer.after(0, () => this.sweep());
+    this.snoozedSet = new Set();
+    const needsYou = (addr) => this.listed.get(addr) === "blocked"
+      || this.tree(all, addr).some((k) => kidStatus(k.t, this.listed) === "blocked");
+    const blocked = Object.keys(snoozedNow).filter(needsYou);
+    if (blocked.length) cx.timer.after(0, () => { if (!checking()) blocked.forEach(wakeAgent); });
     this.snoozedSet = new Set(Object.keys(snoozedNow).filter((addr) => !blocked.includes(addr)));
     const unfiltered = list;
     list = list.filter((a) => !this.snoozedSet.has(a.address));
-    const all = terminals();
     this.migratePins(all);
     const shown = focused()?.agent;
     const now = Date.now();
