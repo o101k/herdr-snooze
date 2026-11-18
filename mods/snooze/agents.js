@@ -234,7 +234,8 @@ export default class AgentsSidebar {
 
   // Live sub-agents of `addr`, depth first, each with the tree lines in front of it.
   tree(all, addr, lead = []) {
-    const kids = all.filter((k) => k.parent === addr && k.state === "live");
+    // snooze: a snoozed sub-agent waits in Snoozed, not in its parent's tree or urgency.
+    const kids = all.filter((k) => k.parent === addr && k.state === "live" && !this.snoozedSet?.has(k.address));
     return kids.flatMap((k, i) => {
       const last = i === kids.length - 1;
       return [
@@ -288,9 +289,14 @@ export default class AgentsSidebar {
     const sort = sortOf();
     let list = agents();
     this.listed = new Map(list.map((a) => [a.address, a.status]));
-    // snooze: snoozed agents leave the list, and with it agent.next/prev's order.
+    // snooze: snoozed agents leave the list, and with it agent.next/prev's order. One that
+    // needs you shows at once; the sweep, just after this render, ends its snooze.
     const snoozedNow = agentEntries();
-    list = list.filter((a) => !(a.address in snoozedNow));
+    const blocked = Object.keys(snoozedNow).filter((addr) => this.listed.get(addr) === "blocked");
+    if (blocked.length) cx.timer.after(0, () => this.sweep());
+    this.snoozedSet = new Set(Object.keys(snoozedNow).filter((addr) => !blocked.includes(addr)));
+    const unfiltered = list;
+    list = list.filter((a) => !this.snoozedSet.has(a.address));
     const all = terminals();
     this.migratePins(all);
     const shown = focused()?.agent;
@@ -298,7 +304,8 @@ export default class AgentsSidebar {
     this.track(list, now);
     // A kept sub-agent (one with a pane) is in agents() too: where a tree shows
     // it, it gets no row of its own, unless it's pinned.
-    const nested = new Set(collapsed ? [] : list.flatMap((a) => this.tree(all, a.address).map((s) => s.t.address)));
+    // snooze: nesting from every agent, so a snoozed parent's kept sub-agents stay out of the top level.
+    const nested = new Set(collapsed ? [] : unfiltered.flatMap((a) => this.tree(all, a.address).map((s) => s.t.address)));
     list = list.filter((a) => a.pinned || !nested.has(a.address));
     const tabCounts = new Map();
     for (const a of list) tabCounts.set(a.tab, (tabCounts.get(a.tab) ?? 0) + 1);
